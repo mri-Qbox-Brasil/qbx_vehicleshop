@@ -268,7 +268,7 @@ local function spawnVehicle(src, data)
 
     if vehicleId then Entity(veh).state:set('vehicleid', vehicleId, false) end
 
-    TriggerClientEvent('vehiclekeys:client:SetOwner', src, plate)
+    TriggerClientEvent('vehiclekeys:client:SetOwner', src, plate, true)
 
     return netId
 end
@@ -610,7 +610,7 @@ lib.addCommand('transfervehicle', {
         end
 
         exports.qbx_vehicles:SetPlayerVehicleOwner(row.id, targetcid)
-        TriggerClientEvent('vehiclekeys:client:SetOwner', buyerId, row.props.plate)
+        TriggerClientEvent('vehiclekeys:client:SetOwner', buyerId, row.props.plate, true)
 
         local sellerMessage = sellAmount > 0 and locale('success.soldfor') .. lib.math.groupdigits(sellAmount) or locale('success.gifted')
         local buyerMessage = sellAmount > 0 and locale('success.boughtfor') .. lib.math.groupdigits(sellAmount) or locale('success.received_gift')
