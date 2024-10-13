@@ -295,11 +295,7 @@ lib.addCommand('transfervehicle', {
         end
 
         exports.qbx_vehicles:SetPlayerVehicleOwner(row.id, targetcid)
-<<<<<<< HEAD
-        TriggerClientEvent('vehiclekeys:client:SetOwner', buyerId, row.props.plate, true)
-=======
         config.giveKeys(buyerId, row.plate, vehicle)
->>>>>>> 08298ca070f9f3ea15cdc35c4f24083af41ca948
 
         local sellerMessage = sellAmount > 0 and locale('success.soldfor') .. lib.math.groupdigits(sellAmount) or locale('success.gifted')
         local buyerMessage = sellAmount > 0 and locale('success.boughtfor') .. lib.math.groupdigits(sellAmount) or locale('success.received_gift')

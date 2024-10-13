@@ -13,7 +13,7 @@ return {
     ---@param plate string Vehicle Plate
     ---@param vehicle number Vehicle Entity ID
     giveKeys = function(src, plate, vehicle)
-        exports.qbx_vehiclekeys:GiveKeys(src, vehicle)
+        TriggerClientEvent("vehiclekeys:client:SetOwner", src, plate)
     end,
 
     ---@param society string Society name

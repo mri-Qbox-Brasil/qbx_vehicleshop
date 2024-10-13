@@ -261,7 +261,7 @@ return {
             },
             testDrive = {
                 limit = 5.0,
-                spawn = vec4(-7.84, -1081.35, 26.67, 121.83),
+                spawn = vec4(-46.21, -1076.29, 26.75, 71.48),
                 endBehavior = 'return'
             },
             returnLocation = vec3(-44.74, -1082.58, 26.68),
