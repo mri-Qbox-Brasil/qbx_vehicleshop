@@ -21,7 +21,9 @@
         "nofinanced": "Je hebt geen gefinancierde voertuigen",
         "financed": "Dit voertuig is gefinancierd",
         "buyerdeclined": "The player declined the transaction",
-        "sale_timeout": "Wait a while before trading your vehicle"
+        "selftransfer": "You can't transfer to yourself",
+        "sale_timeout": "Wait a while before trading your vehicle",
+        "notallowed": "You are not allowed to purchase this vehicle model"
     },
     "success": {
         "purchased": "Gefeliciteerd met je nieuwe voertuig!",
@@ -65,7 +67,8 @@
         "managed_finance_txt": "Financier voertuig aan speler",
         "submit_ID": "Server ID (#)",
         "keypress_showFinanceMenu": "[E] Menu Financiën openen",
-        "keypress_vehicleViewMenu": "[E] Bekijk voertuig"
+        "keypress_vehicleViewMenu": "[E] Bekijk voertuig",
+        "target_showFinanceMenu": "Menu Financiën openen"
     },
     "general": {
         "testdrive_timer": "Testrit tijd resterent:",
@@ -76,6 +79,8 @@
         "command_transfervehicle": "Verkoop/Geef je voertuig weg",
         "command_transfervehicle_help": "ID van koper",
         "command_transfervehicle_amount": "Verkoop bedrag (optioneel)",
-        "transfervehicle_confirm": "Confirm trade of %s %s for $ %s"
+        "transfervehicle_confirm": "Confirm trade of %s %s for $ %s",
+        "financed_vehicle_header": "Warning: This vehicle is financed!",
+        "financed_vehicle_warning": "Balance: %s, Remaining Payments: %s, Next Payment Due: %s minutes"
     }
 }

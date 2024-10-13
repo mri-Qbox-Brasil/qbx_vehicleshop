@@ -3,8 +3,8 @@ local sharedConfig = require 'config.shared'
 local vehiclesMenu = require 'client.vehicles'
 local VEHICLES = exports.qbx_core:GetVehiclesByName()
 local VEHICLES_HASH = exports.qbx_core:GetVehiclesByHash()
-local testDriveVeh = 0
 local insideShop
+local showroomPoints = {}
 
 ---@param data VehicleFinanceClient
 local function financePayment(data)
@@ -18,12 +18,7 @@ local function financePayment(data)
     if not dialog then return end
 
     local paymentAmount = tonumber(dialog[1])
-    TriggerServerEvent('qbx_vehicleshop:server:financePayment', paymentAmount, {
-        vehId = data.vehId,
-        paymentAmount = data.paymentAmount,
-        balance = data.balance,
-        paymentsLeft = data.paymentsLeft
-    })
+    TriggerServerEvent('qbx_vehicleshop:server:financePayment', paymentAmount, data.vehId)
 end
 
 local function confirmationCheck()
@@ -63,7 +58,7 @@ local function showVehicleFinanceMenu(data)
                 local check = confirmationCheck()
 
                 if check == 'confirm' then
-                    TriggerServerEvent('qbx_vehicleshop:server:financePaymentFull', { vehBalance = data.balance, vehId = data.vehId })
+                    TriggerServerEvent('qbx_vehicleshop:server:financePaymentFull', data.vehId)
                 else
                     lib.showContext('vehicleFinance')
                 end
@@ -83,7 +78,7 @@ end
 
 --- Gets the owned vehicles based on financing then opens a menu
 local function showFinancedVehiclesMenu()
-    local vehicles = lib.callback.await('qbx_vehicleshop:server:GetVehiclesByName')
+    local vehicles = lib.callback.await('qbx_vehicleshop:server:GetFinancedVehicles')
     local ownedVehicles = {}
 
     if not vehicles or #vehicles == 0 then
@@ -91,30 +86,28 @@ local function showFinancedVehiclesMenu()
     end
 
     for _, v in pairs(vehicles) do
-        if v.balance and v.balance > 0 then
-            local plate = v.props.plate
-            local vehicle = VEHICLES[v.modelName]
+        local plate = v.props.plate
+        local vehicle = VEHICLES[v.modelName]
 
-            plate = plate and plate:upper()
+        plate = plate and plate:upper()
 
-            ownedVehicles[#ownedVehicles + 1] = {
-                title = vehicle.name,
-                description = locale('menus.veh_platetxt')..plate,
-                icon = 'fa-solid fa-car-side',
-                arrow = true,
-                onSelect = function()
-                    showVehicleFinanceMenu({
-                        vehId = v.id,
-                        name = vehicle.name,
-                        brand = vehicle.brand,
-                        vehiclePlate = plate,
-                        balance = v.balance,
-                        paymentsLeft = v.paymentsleft,
-                        paymentAmount = v.paymentamount
-                    })
-                end
-            }
-        end
+        ownedVehicles[#ownedVehicles + 1] = {
+            title = vehicle.name,
+            description = locale('menus.veh_platetxt')..plate,
+            icon = 'fa-solid fa-car-side',
+            arrow = true,
+            onSelect = function()
+                showVehicleFinanceMenu({
+                    vehId = v.id,
+                    name = vehicle.name,
+                    brand = vehicle.brand,
+                    vehiclePlate = plate,
+                    balance = v.balance,
+                    paymentsLeft = v.paymentsleft,
+                    paymentAmount = v.paymentamount
+                })
+            end
+        }
     end
 
     if #ownedVehicles == 0 then
@@ -130,12 +123,6 @@ local function showFinancedVehiclesMenu()
     lib.showContext('ownedVehicles')
 end
 
-RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
-    local citizenId = QBX.PlayerData.citizenid
-    TriggerServerEvent('qbx_vehicleshop:server:removePlayer', citizenId)
-end)
-
---- Fetches the name of a vehicle from QB Shared
 ---@param closestVehicle integer
 ---@return string
 local function getVehName(closestVehicle)
@@ -144,7 +131,6 @@ local function getVehName(closestVehicle)
     return VEHICLES[vehicle].name
 end
 
---- Fetches the price of a vehicle from QB Shared then it formats it into a text
 ---@param closestVehicle integer
 ---@return string
 local function getVehPrice(closestVehicle)
@@ -153,7 +139,6 @@ local function getVehPrice(closestVehicle)
     return lib.math.groupdigits(VEHICLES[vehicle].price)
 end
 
---- Fetches the brand of a vehicle from QB Shared
 ---@param closestVehicle integer
 ---@return string
 local function getVehBrand(closestVehicle)
@@ -162,7 +147,7 @@ local function getVehBrand(closestVehicle)
     return VEHICLES[vehicle].brand
 end
 
----@param targetShowroomVehicle integer vehicleName
+---@param targetShowroomVehicle integer Showroom position index
 ---@param buyVehicle string model
 local function openFinance(targetShowroomVehicle, buyVehicle)
     local title = ('%s %s - R$%s'):format(VEHICLES[buyVehicle].brand:upper(), VEHICLES[buyVehicle].name:upper(), getVehPrice(targetShowroomVehicle))
@@ -200,8 +185,8 @@ end
 local function openVehCatsMenu(category, targetVehicle)
 
     local categoryMenu = {}
-    for i = 1, #vehiclesMenu do
-        local vehicle = vehiclesMenu[i]
+    for i = 1, vehiclesMenu.count do
+        local vehicle = vehiclesMenu.vehicles[i]
         if vehicle.category == category and vehicle.shopType == insideShop then
             vehicle.args.closestShop = insideShop
             vehicle.args.targetVehicle = targetVehicle
@@ -220,7 +205,7 @@ local function openVehCatsMenu(category, targetVehicle)
 end
 
 --- Opens a menu with list of vehicle categories
----@param args table<string, any>
+---@param args {targetVehicle: integer}
 local function openVehicleCategoryMenu(args)
     local categoryMenu = {}
     local sortedCategories = {}
@@ -257,7 +242,7 @@ local function openVehicleCategoryMenu(args)
     lib.showContext('vehicleCategories')
 end
 
----@param targetVehicle integer
+---@param targetVehicle integer Showroom position index
 local function openCustomFinance(targetVehicle)
     local vehicle = sharedConfig.shops[insideShop].showroomVehicles[targetVehicle].vehicle
     local title = ('%s %s - R$%s'):format(getVehBrand(targetVehicle):upper(), vehicle:upper(), getVehPrice(targetVehicle))
@@ -312,6 +297,11 @@ local function startTestDrive(vehModel)
     TriggerServerEvent('qbx_vehicleshop:server:customTestDrive', vehModel, playerId)
 end
 
+lib.onCache('vehicle', function(value)
+    if value or not LocalPlayer.state.isInTestDrive then return end
+    LocalPlayer.state:set('isInTestDrive', nil, true)
+end)
+
 ---@param vehModel string
 local function sellVehicle(vehModel)
     local playerId = getPlayerIdInput(vehModel)
@@ -336,19 +326,18 @@ local function openVehicleSellMenu(targetVehicle)
     }
 
     if sharedConfig.shops[insideShop].type == 'free-use' then
-        if config.enableTestDrive then
+        if sharedConfig.enableTestDrive then
             options[#options + 1] = {
                 title = locale('menus.test_header'),
                 description = locale('menus.freeuse_test_txt'),
-                icon = 'fas fa-car',
-                event = 'qbx_vehicleshop:client:testDrive',
+                serverEvent = 'qbx_vehicleshop:server:testDrive',
                 args = {
                     vehicle = vehicle
                 }
             }
         end
 
-        if config.enableFreeUseBuy then
+        if sharedConfig.enableFreeUseBuy then
             options[#options + 1] = {
                 title = locale('menus.freeuse_buy_header'),
                 description = locale('menus.freeuse_buy_txt'),
@@ -360,7 +349,7 @@ local function openVehicleSellMenu(targetVehicle)
             }
         end
 
-        if config.finance.enable then
+        if sharedConfig.finance.enable then
             options[#options + 1] = {
                 title = locale('menus.finance_header'),
                 description = locale('menus.freeuse_finance_txt'),
@@ -382,7 +371,7 @@ local function openVehicleSellMenu(targetVehicle)
                 end,
         }
 
-        if config.enableTestDrive then
+        if sharedConfig.enableTestDrive then
             options[#options + 1] = {
                 title = locale('menus.test_header'),
                 description = locale('menus.managed_test_txt'),
@@ -393,7 +382,7 @@ local function openVehicleSellMenu(targetVehicle)
             }
         end
 
-        if config.finance.enable then
+        if sharedConfig.finance.enable then
             options[#options + 1] = {
                 title = locale('menus.finance_header'),
                 description = locale('menus.managed_finance_txt'),
@@ -414,42 +403,6 @@ local function openVehicleSellMenu(targetVehicle)
     })
 
     lib.showContext('vehicleMenu')
-end
-
---- End test drive
-local function endTestDrive()
-    TriggerServerEvent('qbx_vehicleshop:server:deleteVehicle', testDriveVeh)
-    testDriveVeh = 0
-    LocalPlayer.state:set('isInTestDrive', false, true)
-    exports.qbx_core:Notify(locale('general.testdrive_complete'), 'success')
-end
---- Starts the test drive timer based on time and shop
----@param time number
-local function startTestDriveTimer(time)
-    local gameTimer = GetGameTimer()
-    local timeMs = time * 1000
-    local outVeh = false
-    while not IsPedInAnyVehicle(cache.ped, false) do Wait(0) end
-
-    CreateThread(function()
-        local playerState = LocalPlayer.state
-        while playerState.isInTestDrive do
-            local currentGameTime = GetGameTimer()
-            local secondsLeft = currentGameTime - gameTimer
-
-            if currentGameTime < gameTimer + timeMs and secondsLeft >= timeMs - 50 then
-                endTestDrive()
-            end
-
-            qbx.drawText2d({
-                text = locale('general.testdrive_timer')..math.ceil(time - secondsLeft / 1000),
-                coords = vec2(1.0, 1.38),
-                scale = 0.5
-            })
-
-            Wait(0)
-        end
-    end)
 end
 
 ---@param shopName string
@@ -478,7 +431,7 @@ end
 local function createVehicleZone(shopName, coords, targetVehicle)
     local shop = sharedConfig.shops[shopName]
 
-    lib.zones.box({
+    local boxZone = lib.zones.box({
         coords = coords.xyz,
         size = shop.zone.size,
         rotation = coords.w,
@@ -503,6 +456,7 @@ local function createVehicleZone(shopName, coords, targetVehicle)
             lib.hideTextUI()
         end
     })
+    return boxZone
 end
 
 --- Creates a shop
@@ -528,109 +482,85 @@ end
 ---@return number vehicleEntity
 local function createShowroomVehicle(model, coords)
     lib.requestModel(model, 10000)
-    local veh = CreateVehicle(model, coords.x, coords.y, coords.z, coords.w, false, false)
+    local veh = CreateVehicle(model, coords.x, coords.y, coords.z, coords.w, false, true)
     SetModelAsNoLongerNeeded(model)
     SetVehicleOnGroundProperly(veh)
     SetEntityInvincible(veh, true)
     SetVehicleDirtLevel(veh, 0.0)
-    SetVehicleDoorsLocked(veh, 3)
+    SetVehicleDoorsLocked(veh, 10)
     FreezeEntityPosition(veh, true)
     SetVehicleNumberPlateText(veh, 'BUY ME')
     return veh
 end
 
---- Initial function to set things up. Creating vehicleshops defined in the config and spawns the sellable vehicles
-local shopVehs = {}
+local function createShowroomVehiclePoint(data)
+    local vehPoint = lib.points.new({
+        coords = data.coords,
+        heading = data.coords.w,
+        distance = 300,
+        shopName = data.shopName,
+        vehiclePos = data.vehiclePos,
+        model = data.model,
+        veh = nil,
+        boxZone = nil
+    })
 
-local function init()
+    function vehPoint:onEnter()
+        self.veh = createShowroomVehicle(self.model, vec4(self.coords.x, self.coords.y, self.coords.z, self.heading))
+        if config.useTarget then
+            createVehicleTarget(self.shopName, self.veh, self.vehiclePos)
+        else
+            self.boxZone = createVehicleZone(self.shopName, self.coords, self.vehiclePos)
+        end
+    end
+
+    function vehPoint:onExit()
+        if config.useTarget then
+            exports.ox_target:removeLocalEntity(self.veh, 'vehicleshop:showVehicleOptions')
+        else
+            self.boxZone:remove()
+        end
+        if DoesEntityExist(self.veh) then
+            DeleteEntity(self.veh)
+        end
+        self.veh = nil
+        self.boxZone = nil
+    end
+    return vehPoint
+end
+
+--- Starts the test drive timer based on time and shop
+---@param time integer
+local function startTestDriveTimer(time)
+    local gameTimer = GetGameTimer()
+
     CreateThread(function()
-        if config.finance.enable then
-            lib.zones.box({
-                coords = config.finance.zone,
-                size = vec3(2, 2, 4),
-                rotation = 0,
-                debug = config.debugPoly,
-                onEnter = function()
-                    lib.showTextUI(locale('menus.keypress_showFinanceMenu'))
-                end,
-                inside = function()
-                    if IsControlJustPressed(0, 38) then
-                        showFinancedVehiclesMenu()
-                    end
-                end,
-                onExit = function()
-                    lib.hideTextUI()
-                end
+        local playerState = LocalPlayer.state
+        while playerState.isInTestDrive do
+            local currentGameTime = GetGameTimer()
+            local secondsLeft = currentGameTime - gameTimer
+
+            qbx.drawText2d({
+                text = locale('general.testdrive_timer')..math.ceil(time - secondsLeft / 1000),
+                coords = vec2(1.0, 1.38),
+                scale = 0.5
             })
+
+            Wait(0)
         end
-    end)
-
-    CreateThread(function()
-        for shopName, shop in pairs(sharedConfig.shops) do
-            createShop(shop.zone.shape, shopName)
-
-            local showroomVehicles = sharedConfig.shops[shopName].showroomVehicles
-            for i = 1, #showroomVehicles do
-                local showroomVehicle = showroomVehicles[i]
-                local veh = createShowroomVehicle(showroomVehicle.vehicle, showroomVehicle.coords)
-
-                shopVehs[i] = veh
-
-                if config.useTarget then
-                    createVehicleTarget(shopName, veh, i)
-                else
-                    createVehicleZone(shopName, showroomVehicle.coords, i)
-                end
-            end
-        end
+        exports.qbx_core:Notify(locale('general.testdrive_complete'), 'success')
     end)
 end
 
---- Executes once player fully loads in
-AddEventHandler('QBCore:Client:OnPlayerLoaded', function()
-    local citizenId = QBX.PlayerData.citizenid
-    TriggerServerEvent('qbx_vehicleshop:server:addPlayer', citizenId)
-    TriggerServerEvent('qbx_vehicleshop:server:checkFinance')
-    init()
-end)
+AddStateBagChangeHandler('isInTestDrive', ('player:%s'):format(cache.serverId), function(_, _, value)
+    if not value then return end
 
-AddEventHandler('QBCore:Client:OnPlayerUnload', function()
-    for i = 1, #shopVehs do
-        DeleteEntity(shopVehs[i])
+    while not cache.vehicle do
+        Wait(10)
     end
 
-    shopVehs = {}
-end)
-
---- Starts the test drive. If vehicle parameter is not provided then the test drive will start with the closest vehicle to the player.
---- @param args table
-RegisterNetEvent('qbx_vehicleshop:client:testDrive', function(args)
-    if LocalPlayer.state.isInTestDrive then
-        exports.qbx_core:Notify(locale('error.testdrive_alreadyin'), 'error')
-        return
-    end
-
-    if not args then return end
-
-    LocalPlayer.state:set('isInTestDrive', true, true)
-    local testDrive = sharedConfig.shops[insideShop].testDrive
-    local plate = 'TEST'..lib.string.random('1111')
-    local netId = lib.callback.await('qbx_vehicleshop:server:spawnVehicle', false, {
-        modelName = args.vehicle,
-        coords = testDrive.spawn,
-        plate = plate
-    })
-
-    lib.waitFor(function()
-        if NetworkDoesEntityExistWithNetworkId(netId) then
-            return true
-        end
-    end, 'netId not exist')
-
-    testDriveVeh = netId
-    while not NetworkGetEntityFromNetworkId(netId) do Wait(100) end
-    exports.qbx_core:Notify(locale('general.testdrive_timenoti', testDrive.limit), 'inform')
-    startTestDriveTimer(testDrive.limit * 60)
+    exports.qbx_core:Notify(locale('general.testdrive_timenoti', value), 'inform')
+    startTestDriveTimer(value * 60)
 end)
 
 --- Swaps the chosen vehicle with another one
@@ -638,32 +568,21 @@ end)
 RegisterNetEvent('qbx_vehicleshop:client:swapVehicle', function(data)
     local shopName = data.closestShop
     local dataTargetVehicle = sharedConfig.shops[shopName].showroomVehicles[data.targetVehicle]
-    if dataTargetVehicle.vehicle == data.toVehicle then return end
+    local vehPoint = showroomPoints[shopName][data.targetVehicle]
 
-    local closestVehicle = lib.getClosestVehicle(dataTargetVehicle.coords.xyz, 5, false)
-    if not closestVehicle then return end
+    if not vehPoint or dataTargetVehicle.vehicle == data.toVehicle then return end
 
     if not IsModelInCdimage(data.toVehicle) then
         lib.print.error(('Failed to find model for "%s". Vehicle might not be streamed?'):format(data.toVehicle))
         return
     end
 
-    DeleteEntity(closestVehicle)
-    while DoesEntityExist(closestVehicle) do
-        Wait(50)
-    end
-
-    local veh = createShowroomVehicle(data.toVehicle, dataTargetVehicle.coords)
-
     dataTargetVehicle.vehicle = data.toVehicle
-
-    if config.useTarget then
-        createVehicleTarget(shopName, veh, data.targetVehicle)
+    vehPoint.model = data.toVehicle
+    if vehPoint.currentDistance <= vehPoint.distance then
+        vehPoint:onExit()
+        vehPoint:onEnter()
     end
-end)
-
-lib.callback.register('qbx_vehicleshop:client:getPlayerCurrentShop', function()
-    return insideShop
 end)
 
 local function confirmTrade(confirmationText)
@@ -691,6 +610,20 @@ local function confirmTrade(confirmationText)
     return accepted
 end
 
+lib.callback.register('qbx_vehicleshop:client:confirmFinance', function(financeData)
+    local alert = lib.alertDialog({
+        header = locale('general.financed_vehicle_header'),
+        content = locale('general.financed_vehicle_warning', lib.math.groupdigits(financeData.balance), lib.math.groupdigits(financeData.paymentamount), financeData.timer),
+        centered = true,
+        cancel = true,
+        labels = {
+            cancel = 'No',
+            confirm = 'Yes',
+        }
+    })
+    return alert
+end)
+
 lib.callback.register('qbx_vehicleshop:client:confirmTrade', function(vehicle, sellAmount)
     local confirmationText = locale('general.transfervehicle_confirm', VEHICLES_HASH[vehicle].brand, VEHICLES_HASH[vehicle].name, lib.math.groupdigits(sellAmount) or 0)
 
@@ -709,6 +642,45 @@ end)
 
 --- Thread to create blips
 CreateThread(function()
+    if sharedConfig.finance.enable then
+        if config.useTarget then
+            exports.ox_target:addBoxZone({
+                coords = sharedConfig.finance.zone,
+                size = vec3(2, 2, 4),
+                rotation = 0,
+                debug = config.debugPoly,
+                options = {
+                    {
+                        name = 'vehicleshop:showFinanceMenu',
+                        icon = 'fas fa-money-check',
+                        label = locale('menus.finance_menu'),
+                        onSelect = function()
+                            showFinancedVehiclesMenu()
+                        end
+                    }
+                }
+            })
+        else
+            lib.zones.box({
+                coords = sharedConfig.finance.zone,
+                size = vec3(2, 2, 4),
+                rotation = 0,
+                debug = config.debugPoly,
+                onEnter = function()
+                    lib.showTextUI(locale('menus.keypress_showFinanceMenu'))
+                end,
+                inside = function()
+                    if IsControlJustPressed(0, 38) then
+                        showFinancedVehiclesMenu()
+                    end
+                end,
+                onExit = function()
+                    lib.hideTextUI()
+                end
+            })
+        end
+    end
+
     for _, v in pairs(sharedConfig.shops) do
         local blip = v.blip
         if blip.show then
@@ -723,10 +695,20 @@ CreateThread(function()
             EndTextCommandSetBlipName(dealer)
         end
     end
-end)
 
-AddEventHandler('onResourceStart', function(resource)
-    if resource ~= cache.resource then return end
+    for shopName, shop in pairs(sharedConfig.shops) do
+        createShop(shop.zone.shape, shopName)
+        showroomPoints[shopName] = {}
 
-    init()
+        local showroomVehicles = sharedConfig.shops[shopName].showroomVehicles
+        for i = 1, #showroomVehicles do
+            local showroomVehicle = showroomVehicles[i]
+            showroomPoints[shopName][i] = createShowroomVehiclePoint({
+                coords = showroomVehicle.coords,
+                shopName = shopName,
+                vehiclePos = i,
+                model = showroomVehicle.vehicle
+            })
+        end
+    end
 end)

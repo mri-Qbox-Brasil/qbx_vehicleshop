@@ -20,7 +20,9 @@
         "buyertoopoor": "Kupujuci nema dostatek financi",
         "nofinanced": "Nemas zadne vozidlo na splatky",
         "buyerdeclined": "The player declined the transaction",
-        "sale_timeout": "Wait a while before trading your vehicle"
+        "selftransfer": "You can't transfer to yourself",
+        "sale_timeout": "Wait a while before trading your vehicle",
+        "notallowed": "You are not allowed to purchase this vehicle model"
     },
     "success": {
         "purchased": "Gratulujeme k vyberu! At slouzi!",
@@ -64,7 +66,8 @@
         "managed_finance_txt": "Financovani vozidla",
         "submit_ID": "Server ID (#)",
         "keypress_showFinanceMenu": "[E] Otvoriť ponuku Financie",
-        "keypress_vehicleViewMenu": "[E] Zobraziť vozidlo"
+        "keypress_vehicleViewMenu": "[E] Zobraziť vozidlo",
+        "target_showFinanceMenu": "Otvoriť ponuku Financie"
     },
     "general": {
         "testdrive_timer": "Kolik zbyva do konce testovaci jizdy:",
@@ -75,6 +78,8 @@
         "command_transfervehicle": "Daruj nebo prodej vozidlo",
         "command_transfervehicle_help": "ID kupujiciho",
         "command_transfervehicle_amount": "Prodejni castka (Na tobe)",
-        "transfervehicle_confirm": "Confirm trade of %s %s for $ %s"
+        "transfervehicle_confirm": "Confirm trade of %s %s for $ %s",
+        "financed_vehicle_header": "Warning: This vehicle is financed!",
+        "financed_vehicle_warning": "Balance: %s, Remaining Payments: %s, Next Payment Due: %s minutes"
     }
 }
