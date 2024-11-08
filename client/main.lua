@@ -490,6 +490,7 @@ local function createShowroomVehicle(model, coords)
     SetVehicleDoorsLocked(veh, 10)
     FreezeEntityPosition(veh, true)
     SetVehicleNumberPlateText(veh, 'BUY ME')
+    Entity(veh).state.isVehicleShopEntity = true
     return veh
 end
 
