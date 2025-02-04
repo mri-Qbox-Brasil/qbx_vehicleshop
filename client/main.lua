@@ -303,10 +303,11 @@ lib.onCache('vehicle', function(value)
 end)
 
 ---@param vehModel string
-local function sellVehicle(vehModel)
+local function sellVehicle(vehModel, data)
     local playerId = getPlayerIdInput(vehModel)
-
-    TriggerServerEvent('qbx_vehicleshop:server:sellShowroomVehicle', vehModel, playerId)
+    local vip = data and data.vip or nil
+    
+    TriggerServerEvent('qbx_vehicleshop:server:sellShowroomVehicle', vehModel, playerId, vip)
 end
 
 --- Opens the vehicle shop menu
@@ -367,7 +368,7 @@ local function openVehicleSellMenu(targetVehicle)
                 description = locale('menus.managed_sell_txt'),
                 icon = 'fa-solid fa-hand-holding-dollar',
                 onSelect = function()
-                    sellVehicle(vehicle)
+                    sellVehicle(vehicle, {vip = true})
                 end,
         }
 
@@ -584,6 +585,10 @@ RegisterNetEvent('qbx_vehicleshop:client:swapVehicle', function(data)
         vehPoint:onExit()
         vehPoint:onEnter()
     end
+end)
+
+RegisterNetEvent('qbx_vehicleshop:client:testDrive', function(data)
+    TriggerServerEvent('qbx_vehicleshop:server:testDrive', data)
 end)
 
 local function confirmTrade(confirmationText)

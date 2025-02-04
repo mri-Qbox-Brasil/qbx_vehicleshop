@@ -182,7 +182,7 @@ return {
             toro = 'boats',
             toro2 = 'boats',
 
-            --- Helicopters
+--- Helicopters
             buzzard2 = 'air',
             frogger = 'air',
             frogger2 = 'air',
@@ -277,7 +277,7 @@ return {
                 [8] = {coords = vec4(-44.28, -1102.47, 25.44, 298.5), vehicle = 'bati'}
             },
         },
-
+        
         luxury = {
             type = 'managed',
             job = 'cardealer',

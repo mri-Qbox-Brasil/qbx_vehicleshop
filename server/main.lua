@@ -157,7 +157,7 @@ end
 
 ---@param vehicle string
 ---@param playerId string|number
-RegisterNetEvent('qbx_vehicleshop:server:sellShowroomVehicle', function(vehicle, playerId)
+RegisterNetEvent('qbx_vehicleshop:server:sellShowroomVehicle', function(vehicle, playerId, vip)
     local src = source
     local target = exports.qbx_core:GetPlayer(tonumber(playerId))
 
@@ -180,7 +180,7 @@ RegisterNetEvent('qbx_vehicleshop:server:sellShowroomVehicle', function(vehicle,
     local vehiclePrice = COREVEHICLES[vehicle].price
     local cid = target.PlayerData.citizenid
 
-    if not SellShowroomVehicleTransact(src, target, vehiclePrice, vehiclePrice) then return end
+    if not SellShowroomVehicleTransact(src, target, vehiclePrice, vehiclePrice, vip) then return end
 
     local vehicleId = exports.qbx_vehicles:CreatePlayerVehicle({
         model = vehicle,
