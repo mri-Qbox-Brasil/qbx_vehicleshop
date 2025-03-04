@@ -2,9 +2,9 @@ fx_version 'cerulean'
 game 'gta5'
 
 name 'qbx_vehicleshop'
-description 'Vehicle shop system for Qbox'
+description 'Vehicle shop system for Qbox edited by MRI'
 repository 'https://github.com/Qbox-project/qbx_vehicleshop'
-version '1.0.0'
+version '2.0.0'
 
 ox_lib 'locale'
 
@@ -15,6 +15,7 @@ shared_script {
 
 client_scripts {
     '@qbx_core/modules/playerdata.lua',
+    'client/vehicles.lua',
     'client/main.lua',
 }
 

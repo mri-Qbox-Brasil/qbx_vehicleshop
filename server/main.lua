@@ -108,15 +108,22 @@ RegisterNetEvent('qbx_vehicleshop:server:buyShowroomVehicle', function(vehicleDa
 
     local vehicle = vehicleData.buyVehicle
 
+    local stock = CheckStock(vehicle)
+    if stock <= 0 then
+        return exports.qbx_core:Notify(src, locale('error.stockempty'), 'error')
+    end
+
     if not CheckVehicleList(vehicle, shopId) then
         return exports.qbx_core:Notify(src, locale('error.notallowed'), 'error')
     end
 
     local player = exports.qbx_core:GetPlayer(src)
-    local vehiclePrice = COREVEHICLES[vehicle].price
+    local vehiclePrice = CheckPrice(vehicle)
     if not RemoveMoney(src, vehiclePrice, 'vehicle-bought-in-showroom') then
-        return exports.qbx_core:Notify(src, locale('error.notenoughmoney'), 'error')
+        return
     end
+
+    MySQL.execute('UPDATE vehicles_data SET stock = ? WHERE model = ?', { stock - 1, vehicle })
 
     local vehicleId = exports.qbx_vehicles:CreatePlayerVehicle({
         model = vehicle,
@@ -124,7 +131,6 @@ RegisterNetEvent('qbx_vehicleshop:server:buyShowroomVehicle', function(vehicleDa
     })
 
     exports.qbx_core:Notify(src, locale('success.purchased'), 'success')
-
 
     SpawnVehicle(src, {
         coords = shop.vehicleSpawn,
@@ -177,7 +183,7 @@ RegisterNetEvent('qbx_vehicleshop:server:sellShowroomVehicle', function(vehicle,
         return exports.qbx_core:Notify(src, locale('error.notallowed'), 'error')
     end
 
-    local vehiclePrice = COREVEHICLES[vehicle].price
+    local vehiclePrice = CheckPrice(vehicle)
     local cid = target.PlayerData.citizenid
 
     if not SellShowroomVehicleTransact(src, target, vehiclePrice, vehiclePrice, vip) then return end
@@ -306,4 +312,184 @@ lib.addCommand('transfervehicle', {
             SetHasFinanced(buyerId, true)
         end
     end, GetEntityModel(vehicle), sellAmount)
+end)
+
+local VEHICLES_DATA = {}
+
+function LoadVehiclesData()
+    VEHICLES_DATA = {}
+    local result = MySQL.query.await('SELECT * FROM vehicles_data')
+    local count = 0
+    for _, v in pairs(result) do
+        if v.model then
+            VEHICLES_DATA[v.model] = {
+                stock = v.stock,
+                price = v.price,
+                model = v.model,
+                name = v.name,
+                brand = v.brand,
+                category = v.category
+            }
+            count = count + 1
+        end
+    end
+    print('qbx_vehicleshop: Loaded ' .. count .. ' vehicles')
+end
+
+AddEventHandler('onResourceStart', function(resourceName)
+    if resourceName == GetCurrentResourceName() then
+        PrepareDatabase()
+    end
+end)
+
+lib.callback.register('qbx_vehicleshop:server:getVehicles', function(source)
+    return VEHICLES_DATA
+end)
+
+function CheckStock(vehicle)
+    local result = MySQL.query.await('SELECT stock FROM vehicles_data WHERE model = ?', {vehicle})
+    return result and result[1] and result[1].stock or 0
+end
+
+function CheckPrice(vehicle)
+    local result = MySQL.query.await('SELECT price FROM vehicles_data WHERE model = ?', {vehicle})
+    return result and result[1] and result[1].price or 0
+end
+
+lib.callback.register('qbx_vehicleshop:server:checkstock', function(source, vehicle)
+    return CheckStock(vehicle)
+end)
+
+lib.callback.register('qbx_vehicleshop:server:checkprice', function(source, vehicle)
+    return CheckPrice(vehicle)
+end)
+
+lib.callback.register('qbx_vehicleshop:server:getCategories', function(source)
+    local categories = {}
+    local result = MySQL.query.await('SELECT DISTINCT category FROM vehicles_data')
+
+    for _, v in pairs(result) do
+        if v.category and v.category ~= "" then
+            table.insert(categories, { label = v.category, value = v.category })
+        end
+    end
+
+    return categories
+end)
+
+function PrepareDatabase()
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS vehicles_data (
+            model VARCHAR(50) PRIMARY KEY,
+            stock INT DEFAULT 0,
+            price INT NOT NULL,
+            name VARCHAR(100),
+            brand VARCHAR(50),
+            category VARCHAR(50),
+            hash BIGINT
+        )
+    ]])
+
+    print("Tabela 'vehicles_data' verificada/criada.")
+
+    local vehShare = exports.qbx_core:GetVehiclesByName()
+    for k, v in pairs(vehShare) do
+        local dbcar = MySQL.query.await("SELECT 1 FROM vehicles_data WHERE model = ? LIMIT 1", { k })
+        if not dbcar[1] then
+            print("Inserted:", k)
+            MySQL.insert("INSERT INTO vehicles_data (model, stock, price, name, brand, category, hash) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                { k, 0, v.price, v.name, v.brand, v.category, v.hash })
+            VEHICLES_DATA[k] = { stock = 0, price = v.price, model = k, name = v.name, brand = v.brand, category = v.category }
+        else
+            print("Exists:", k)
+        end
+    end
+
+    TriggerClientEvent('qbx_vehicleshop:client:refreshVehicles', -1)
+    print("qbx_vehicleshop: Tabela de veículos carregada.")
+    LoadVehiclesData()
+end
+
+
+lib.addCommand("loadstock", {
+    help = locale("general.command_loadstock"),
+    params = {},
+    restricted = { "admin" },
+}, function(source)
+    PrepareDatabase()
+    exports.qbx_core:Notify(source, "Tabela de veículos carregada.", "success")
+end)
+
+lib.addCommand("setstock", {
+    help = locale("general.command_setstock"),
+    params = {},
+    restricted = { "admin" },
+}, function(source)
+    local ped = GetPlayerPed(source)
+    local veh = GetVehiclePedIsIn(ped, false)
+    local vehicleModel = nil
+
+    if veh > 0 then
+        local vehicleHash = GetEntityModel(veh)
+        local vehicleData = exports.qbx_core:GetVehiclesByHash(vehicleHash)
+        vehicleModel = vehicleData and vehicleData.model
+
+        if not vehicleModel then
+            exports.qbx_core:Notify(source, "Veículo não encontrado", "error")
+            return
+        end
+    else
+        local vehicles = exports.qbx_core:GetVehiclesByName()
+        local vehicleList = {}
+
+        for _, v in pairs(vehicles) do
+            table.insert(vehicleList, { label = string.format('%s (%s)', v.name, v.model), value = v.model })
+        end
+
+        vehicleModel = lib.callback.await("qbx_vehicleshop:dialog:selectVehicle", source, vehicleList)
+
+        if not vehicleModel then
+            exports.qbx_core:Notify(source, "Nenhum veículo selecionado", "error")
+            return
+        end
+    end
+
+    local vehicleInfo = MySQL.query.await("SELECT * FROM vehicles_data WHERE model = ?", { vehicleModel })
+
+    if not vehicleInfo or not vehicleInfo[1] then
+        exports.qbx_core:Notify(source, "Veículo não encontrado na base de dados", "error")
+        return
+    end
+
+    vehicleInfo = vehicleInfo[1]
+
+    local input = lib.callback.await("qbx_vehicleshop:dialog:updateStock", source, vehicleInfo)
+
+    if input and input.reset then
+        local vehData = exports.qbx_core:GetVehiclesByName()[vehicleModel]
+
+        if not vehData then
+            exports.qbx_core:Notify(source, "Erro ao buscar os dados do veículo!", "error")
+            return
+        end
+
+        MySQL.update("DELETE FROM vehicles_data WHERE model = ?", { vehicleModel })
+        MySQL.insert("INSERT INTO vehicles_data (model, stock, price, name, brand, category, hash) VALUES (?, ?, ?, ?, ?, ?, ?)", {
+            vehicleModel, 0, vehData.price, vehData.name, vehData.brand, vehData.category, vehData.hash
+        })
+        VEHICLES_DATA[vehicleModel] = { stock = 0, price = vehData.price, model = vehicleModel, name = vehData.name, brand = vehData.brand, category = vehData.category }
+        TriggerClientEvent('qbx_vehicleshop:client:refreshVehicles', -1)
+
+        exports.qbx_core:Notify(source, "Veículo " .. vehicleModel .. " redefinido!", "success")
+    elseif input and tonumber(input.stock) and tonumber(input.price) and input.name and input.brand and input.category then
+        MySQL.update("UPDATE vehicles_data SET stock = ?, price = ?, name = ?, brand = ?, category = ? WHERE model = ?", {
+            tonumber(input.stock), tonumber(input.price), input.name, input.brand, input.category, vehicleModel
+        })
+        VEHICLES_DATA[vehicleModel] = { stock = tonumber(input.stock), price = tonumber(input.price), model = vehicleModel, name = input.name, brand = input.brand, category = input.category }
+        TriggerClientEvent('qbx_vehicleshop:client:refreshVehicles', -1)
+
+        exports.qbx_core:Notify(source, "Dados de " .. vehicleModel .. " atualizados com sucesso!", "success")
+    else
+        exports.qbx_core:Notify(source, "Nenhum valor válido inserido", "error")
+    end
 end)

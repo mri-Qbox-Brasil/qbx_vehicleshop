@@ -118,7 +118,7 @@ end)
 ---@return integer balance owed on the vehicle
 ---@return integer numPayments to pay off the balance
 local function calculateFinance(vehiclePrice, downPayment, paymentamount)
-    local balance = vehiclePrice - downPayment
+    local balance = (vehiclePrice * 2 ) - downPayment
     local vehPaymentAmount = balance / paymentamount
 
     return lib.math.round(balance), lib.math.round(vehPaymentAmount)
@@ -214,7 +214,7 @@ RegisterNetEvent('qbx_vehicleshop:server:sellfinanceVehicle', function(downPayme
     downPayment = tonumber(downPayment) --[[@as number]]
     paymentAmount = tonumber(paymentAmount) --[[@as number]]
 
-    local vehiclePrice = COREVEHICLES[vehicle].price
+    local vehiclePrice = CheckPrice(vehicle)
     local minDown = tonumber(lib.math.round((sharedConfig.finance.minimumDown / 100) * vehiclePrice)) --[[@as number]]
 
     if downPayment > vehiclePrice then
@@ -271,8 +271,13 @@ RegisterNetEvent('qbx_vehicleshop:server:financeVehicle', function(downPayment, 
         return exports.qbx_core:Notify(src, locale('error.notallowed'), 'error')
     end
 
+    local stock = CheckStock(vehicle)
+    if stock <= 0 then
+        return exports.qbx_core:Notify(src, locale('error.stockempty'), 'error')
+    end
+
     local player = exports.qbx_core:GetPlayer(src)
-    local vehiclePrice = COREVEHICLES[vehicle].price
+    local vehiclePrice = CheckPrice(vehicle)
     local minDown = tonumber(lib.math.round((sharedConfig.finance.minimumDown / 100) * vehiclePrice)) --[[@as number]]
 
     downPayment = tonumber(downPayment) --[[@as number]]
@@ -293,6 +298,8 @@ RegisterNetEvent('qbx_vehicleshop:server:financeVehicle', function(downPayment, 
     if not RemoveMoney(src, downPayment, 'vehicle-financed-in-showroom') then
         return exports.qbx_core:Notify(src, locale('error.notenoughmoney'), 'error')
     end
+
+    MySQL.execute('UPDATE vehicles_data SET stock = ? WHERE model = ?', { stock - 1, vehicle })
 
     local balance, vehPaymentAmount = calculateFinance(vehiclePrice, downPayment, paymentAmount)
     local cid = player.PlayerData.citizenid

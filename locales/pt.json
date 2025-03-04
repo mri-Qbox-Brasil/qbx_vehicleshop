@@ -1,5 +1,6 @@
 {
     "error": {
+        "stockempty": "Veículo sem estoque!",
         "notowned": "Este veículo não pertence ao jogador",
         "testdrive_alreadyin": "Já estás num test drive",
         "testdrive_return": "Este não é o teu veículo de test drive",

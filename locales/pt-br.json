@@ -1,5 +1,6 @@
 {
     "error": {
+        "stockempty": "Veículo sem estoque!",
         "notowned": "Veículo não é seu",
         "testdrive_alreadyin": "Já está em um test drive",
         "testdrive_return": "Este não é o seu veículo de test drive",

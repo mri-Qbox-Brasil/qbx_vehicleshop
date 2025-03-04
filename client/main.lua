@@ -1,7 +1,13 @@
+local attempts = 0
+while not GetVehiclesFromServer and attempts < 20 do
+    Citizen.Wait(500)
+    attempts = attempts + 1
+end
+
 local config = require 'config.client'
 local sharedConfig = require 'config.shared'
-local vehiclesMenu = require 'client.vehicles'
-local VEHICLES = exports.qbx_core:GetVehiclesByName()
+local vehiclesMenu = GetVehiclesFromServer()
+local VEHICLES = lib.callback.await('qbx_vehicleshop:server:getVehicles', false) --exports.qbx_core:GetVehiclesByName()
 local VEHICLES_HASH = exports.qbx_core:GetVehiclesByHash()
 local insideShop
 local showroomPoints = {}
@@ -41,9 +47,9 @@ local function showVehicleFinanceMenu(data)
     local vehLabel = ('%s %s'):format(data.brand, data.name)
     local vehFinance = {
         {
-            title = locale('menus.veh_finance_title'),
+            title = ('Nome: %s'):format(vehLabel),
             icon = 'circle-info',
-            description = string.format('Nome: %s\nPlaca: %s\nSaldo restante: R$%s\nValor das parcelas: R$%s\nParcelas restantes: %s', vehLabel, data.vehiclePlate, lib.math.groupdigits(data.balance), lib.math.groupdigits(data.paymentAmount), data.paymentsLeft),
+            description = string.format('Placa: %s\nSaldo restante: R$%s\nValor das parcelas: R$%s\nParcelas restantes: %s', data.vehiclePlate, lib.math.groupdigits(data.balance), lib.math.groupdigits(data.paymentAmount), data.paymentsLeft),
             readOnly = true,
         },
         {
@@ -136,7 +142,9 @@ end
 local function getVehPrice(closestVehicle)
     local vehicle = sharedConfig.shops[insideShop].showroomVehicles[closestVehicle].vehicle
 
-    return lib.math.groupdigits(VEHICLES[vehicle].price)
+    local price = lib.callback.await("qbx_vehicleshop:server:checkprice", false, vehicle)
+
+    return lib.math.groupdigits(price)
 end
 
 ---@param closestVehicle integer
@@ -144,21 +152,22 @@ end
 local function getVehBrand(closestVehicle)
     local vehicle = sharedConfig.shops[insideShop].showroomVehicles[closestVehicle].vehicle
 
-    return VEHICLES[vehicle].brand
+    return VEHICLES[vehicle] and VEHICLES[vehicle].brand or ""
 end
 
 ---@param targetShowroomVehicle integer Showroom position index
 ---@param buyVehicle string model
 local function openFinance(targetShowroomVehicle, buyVehicle)
+    local buyVehicleprice = lib.callback.await("qbx_vehicleshop:server:checkprice", false, buyVehicle)
     local title = ('%s %s - R$%s'):format(VEHICLES[buyVehicle].brand:upper(), VEHICLES[buyVehicle].name:upper(), getVehPrice(targetShowroomVehicle))
     local dialog = lib.inputDialog(title, {
         {
             type = 'number',
             label = locale('menus.financesubmit_downpayment')..sharedConfig.finance.minimumDown..'%',
-            placeholder = string.format('%.2f', math.ceil(VEHICLES[buyVehicle].price * sharedConfig.finance.minimumDown / 100)),
-            default = math.ceil(VEHICLES[buyVehicle].price * sharedConfig.finance.minimumDown / 100),
-            min = VEHICLES[buyVehicle].price * sharedConfig.finance.minimumDown / 100,
-            max = VEHICLES[buyVehicle].price
+            placeholder = string.format('%.2f', math.ceil(buyVehicleprice * sharedConfig.finance.minimumDown / 100)),
+            default = math.ceil(buyVehicleprice * sharedConfig.finance.minimumDown / 100),
+            min = buyVehicleprice * sharedConfig.finance.minimumDown / 100,
+            max = buyVehicleprice
         },
         {
             type = 'number',
@@ -183,6 +192,7 @@ end
 ---@param category string
 ---@param targetVehicle number
 local function openVehCatsMenu(category, targetVehicle)
+    local vehiclesMenu = GetVehiclesFromServer()
 
     local categoryMenu = {}
     for i = 1, vehiclesMenu.count do
@@ -306,7 +316,7 @@ end)
 local function sellVehicle(vehModel, data)
     local playerId = getPlayerIdInput(vehModel)
     local vip = data and data.vip or nil
-    
+
     TriggerServerEvent('qbx_vehicleshop:server:sellShowroomVehicle', vehModel, playerId, vip)
 end
 
@@ -326,12 +336,22 @@ local function openVehicleSellMenu(targetVehicle)
         arrow = true
     }
 
+    local stock = lib.callback.await('qbx_vehicleshop:server:checkstock', false, vehicle)
     if sharedConfig.shops[insideShop].type == 'free-use' then
+        options[#options + 1] = {
+            title = "Estoque",
+            description = 'Estoque atual: ' .. stock,
+            serverEvent = 'qbx_vehicleshop:server:testDrive',
+            icon = 'box',
+            disabled = true
+        }
+
         if sharedConfig.enableTestDrive then
             options[#options + 1] = {
                 title = locale('menus.test_header'),
                 description = locale('menus.freeuse_test_txt'),
                 serverEvent = 'qbx_vehicleshop:server:testDrive',
+                icon = 'car',
                 args = {
                     vehicle = vehicle
                 }
@@ -399,7 +419,8 @@ local function openVehicleSellMenu(targetVehicle)
 
     lib.registerContext({
         id = 'vehicleMenu',
-        title = ('%s %s - **R$%s**'):format(getVehBrand(targetVehicle):upper(), getVehName(targetVehicle):upper(), getVehPrice(targetVehicle)),
+        description = ('%s %s'):format(getVehBrand(targetVehicle):upper(), getVehName(targetVehicle):upper()),
+        title = string.format('R$ %s', getVehPrice(targetVehicle)),
         options = options
     })
 
@@ -717,4 +738,97 @@ CreateThread(function()
             })
         end
     end
+end)
+
+lib.callback.register("qbx_vehicleshop:dialog:updateStock", function(vehicleInfo)
+    local categories = lib.callback.await("qbx_vehicleshop:server:getCategories", false)
+
+    local input = lib.inputDialog("Editar Veículo: " .. vehicleInfo.model, {
+        {
+            type = "number",
+            label = "Quantidade de Estoque",
+            description = "Digite a nova quantidade",
+            default = vehicleInfo.stock,
+            min = 0,
+            step = 1
+        },
+        {
+            type = "number",
+            label = "Preço do Veículo",
+            description = "Digite o novo preço",
+            default = vehicleInfo.price,
+            min = 0,
+            step = 1
+        },
+        {
+            type = "input",
+            label = "Nome do Veículo",
+            description = "Nome visível na loja",
+            default = vehicleInfo.name,
+            required = true
+        },
+        {
+            type = "input",
+            label = "Marca",
+            description = "Digite a marca",
+            default = vehicleInfo.brand,
+            required = true
+        },
+        {
+            type = "select",
+            label = "Escolha uma Categoria",
+            description = "Selecione uma categoria existente ou digite uma nova",
+            options = categories,
+            default = vehicleInfo.category,
+            required = true
+        },
+        {
+            type = "input",
+            label = "Modelo (Não Editável)",
+            description = "Identificação do veículo",
+            default = vehicleInfo.model,
+            disabled = true
+        },
+        {
+            type = "input",
+            label = "Hash (Não Editável)",
+            description = "Hash do veículo",
+            default = vehicleInfo.hash,
+            disabled = true
+        },
+        {
+            type = "checkbox",
+            label = "Redefinir dados do veículo",
+            description = "Excluir e recadastrar com os dados do sistema",
+            checked = false
+        }
+    })
+
+    return input and {
+        stock = input[1],
+        price = input[2],
+        name = input[3],
+        brand = input[4],
+        category = input[5],
+        reset = input[8]
+    } or false
+end)
+
+lib.callback.register("qbx_vehicleshop:dialog:selectVehicle", function(vehicleList)
+    local input = lib.inputDialog("Escolha um veículo", {
+        {
+            type = "select",
+            label = "Selecione o veículo",
+            options = vehicleList,
+            searchable = true,
+            clearable = true
+        }
+    })
+
+    return input and input[1] or false
+end)
+
+lib.callback.register("qbx_vehicleshop:client:getVehiclefromPed", function()
+    local ped = cache.ped
+    return GetVehiclePedIsIn(ped, false)
 end)

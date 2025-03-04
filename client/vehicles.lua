@@ -1,6 +1,6 @@
 local vehicles = {}
 local blocklist = {}
-local VEHICLES = exports.qbx_core:GetVehiclesByName()
+local VEHICLES = lib.callback.await('qbx_vehicleshop:server:getVehicles', false)
 local sharedConfig = require 'config.shared'.vehicles
 local groupdigits = lib.math.groupdigits
 local count = 0
@@ -20,37 +20,59 @@ local function insertVehicle(vehicleData, shopType)
     }
 end
 
-for i = 1, #sharedConfig.blocklist do
-    local blockveh = sharedConfig.blocklist[i]
-    blocklist[blockveh] = true
-end
+local function LoadVehicles()
+    vehicles = {}
+    blocklist = {}
+    count = 0
 
-for k, vehicle in pairs(VEHICLES) do
-    local vehicleShop = sharedConfig.models[k] or sharedConfig.categories[vehicle.category] or sharedConfig.default
+    for i = 1, #sharedConfig.blocklist or {} do
+        local blockveh = sharedConfig.blocklist[i]
+        blocklist[blockveh] = true
+    end
 
-    if blocklist[k] then
-        lib.print.debug('Vehicle is blocked. Skipping: ' .. k)
-    elseif not vehicleShop then
-        lib.print.debug('Vehicle not found in config. Skipping: ' .. k)
-    else
-        if type(vehicleShop) == 'table' then
-            for i = 1, #vehicleShop do
-                insertVehicle(vehicle, vehicleShop[i])
-            end
+    for k, vehicle in pairs(VEHICLES) do
+        local vehicleShop = sharedConfig.models and sharedConfig.models[k] or sharedConfig.categories and sharedConfig.categories[vehicle.category] or sharedConfig.default
+
+        if blocklist[k] then
+            lib.print.debug('Vehicle is blocked. Skipping: ' .. k)
+        elseif not vehicleShop then
+            lib.print.debug('Vehicle not found in config. Skipping: ' .. k)
         else
-            insertVehicle(vehicle, vehicleShop)
+            if type(vehicleShop) == 'table' then
+                for i = 1, #vehicleShop do
+                    insertVehicle(vehicle, vehicleShop[i])
+                end
+            else
+                insertVehicle(vehicle, vehicleShop)
+            end
         end
     end
+
+    table.sort(vehicles, function(a, b)
+        return a.title < b.title
+    end)
+
+    lib.print.info("Lista de veículos carregada com sucesso! Total: " .. count)
 end
 
-table.sort(vehicles, function(a, b)
-    local _, aName = string.strsplit(' ', string.upper(a.title), 2)
-    local _, bName = string.strsplit(' ', string.upper(b.title), 2)
+function GetVehiclesFromServer()
+    if count == 0 then
+        LoadVehicles()
+    end
+    return {
+        vehicles = vehicles,
+        count = count
+    }
+end
 
-    return aName < bName
+function RefreshVehicles()
+    VEHICLES = lib.callback.await('qbx_vehicleshop:server:getVehicles', false)
+    LoadVehicles()
+    lib.print.info("Lista de veículos foi atualizada!")
+end
+
+LoadVehicles()
+
+RegisterNetEvent('qbx_vehicleshop:client:refreshVehicles', function()
+    RefreshVehicles()
 end)
-
-return {
-    vehicles = vehicles,
-    count = count,
-}
