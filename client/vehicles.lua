@@ -2,7 +2,6 @@ local vehicles = {}
 local blocklist = {}
 local VEHICLES = lib.callback.await('qbx_vehicleshop:server:getVehicles', false)
 local sharedConfig = require 'config.shared'.vehicles
-local groupdigits = lib.math.groupdigits
 local count = 0
 
 local function insertVehicle(vehicleData, shopType)
@@ -12,7 +11,7 @@ local function insertVehicle(vehicleData, shopType)
         category = vehicleData.category,
 
         title = ('%s %s'):format(vehicleData.brand, vehicleData.name),
-        description = ('%s%s'):format(locale('menus.veh_price'), groupdigits(vehicleData.price)),
+        description = ('%s%s'):format(locale('menus.veh_price'), lib.math.groupdigits(vehicleData.price)),
         serverEvent = 'qbx_vehicleshop:server:swapVehicle',
         args = {
             toVehicle = vehicleData.model,
@@ -49,7 +48,10 @@ local function LoadVehicles()
     end
 
     table.sort(vehicles, function(a, b)
-        return a.title < b.title
+        local _, aName = a.title:upper():strsplit(' ', 2)
+        local _, bName = b.title:upper():strsplit(' ', 2)
+
+        return aName < bName
     end)
 
     lib.print.info("Lista de veículos carregada com sucesso! Total: " .. count)

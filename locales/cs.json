@@ -19,10 +19,12 @@
         "notown": "Nevlastnis toto vozidlo",
         "buyertoopoor": "Kupujuci nema dostatek financi",
         "nofinanced": "Nemas zadne vozidlo na splatky",
+        "financed": "This vehicle is financed",
         "buyerdeclined": "The player declined the transaction",
         "selftransfer": "You can't transfer to yourself",
         "sale_timeout": "Wait a while before trading your vehicle",
-        "notallowed": "You are not allowed to purchase this vehicle model"
+        "notallowed": "You are not allowed to purchase this vehicle model",
+        "no_clear_spawn": "No spawn area found for vehicle."
     },
     "success": {
         "purchased": "Gratulujeme k vyberu! At slouzi!",
@@ -38,6 +40,7 @@
         "financed_header": "Vozidla na splatky",
         "finance_txt": "Podivej se na vlastni vozidla na splatky",
         "returnTestDrive_header": "Ukoncit testovaci jizdu",
+        "categories_header": "Categories",
         "goback_header": "Jit zpet",
         "veh_price": "Cena: CZK",
         "veh_platetxt": "RZ: ",
@@ -52,6 +55,7 @@
         "submit_text": "Potvrdit",
         "test_header": "Testovaci jizda",
         "finance_header": "Financovani vozidla",
+        "owned_vehicles_header": "Owned Vehicles",
         "swap_header": "Vymenit vozidlo",
         "swap_txt": "Podivej se na jine vozidla",
         "financesubmit_downpayment": "Castka zalohy - Min ",

@@ -23,7 +23,8 @@
         "buyerdeclined": "The player declined the transaction",
         "selftransfer": "You can't transfer to yourself",
         "sale_timeout": "Wait a while before trading your vehicle",
-        "notallowed": "You are not allowed to purchase this vehicle model"
+        "notallowed": "You are not allowed to purchase this vehicle model",
+        "no_clear_spawn": "No spawn area found for vehicle."
     },
     "success": {
         "purchased": "¡Felicidades por tu compra!",
@@ -39,6 +40,7 @@
         "financed_header": "Vehículos financiados",
         "finance_txt": "Navega tu colección de vehículos",
         "returnTestDrive_header": "Finalizar prueba de manejo",
+        "categories_header": "Categories",
         "goback_header": "Ir atrás",
         "veh_price": "Precio: $",
         "veh_platetxt": "Placa: ",
@@ -53,6 +55,7 @@
         "submit_text": "Enviar",
         "test_header": "Prueba de manejo",
         "finance_header": "Financiar vehículo",
+        "owned_vehicles_header": "Owned Vehicles",
         "swap_header": "Intercambiar vehículo",
         "swap_txt": "Cambiar el vehículo seleccionado por otro",
         "financesubmit_downpayment": "Monto de pago inicial - Min ",

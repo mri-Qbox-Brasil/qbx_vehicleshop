@@ -23,8 +23,8 @@ local function financePayment(data)
 
     if not dialog then return end
 
-    local paymentAmount = tonumber(dialog[1])
-    TriggerServerEvent('qbx_vehicleshop:server:financePayment', paymentAmount, data.vehId)
+    local amount = tonumber(dialog[1])
+    TriggerServerEvent('qbx_vehicleshop:server:financePayment', amount, data.vehId)
 end
 
 local function confirmationCheck()
@@ -44,10 +44,10 @@ end
 
 ---@param data VehicleFinanceClient
 local function showVehicleFinanceMenu(data)
-    local vehLabel = ('%s %s'):format(data.brand, data.name)
-    local vehFinance = {
+    local label = ('%s %s'):format(data.brand, data.name)
+    local options = {
         {
-            title = ('Nome: %s'):format(vehLabel),
+            title = ('Nome: %s'):format(label),
             icon = 'circle-info',
             description = string.format('Placa: %s\nSaldo restante: R$%s\nValor das parcelas: R$%s\nParcelas restantes: %s', data.vehiclePlate, lib.math.groupdigits(data.balance), lib.math.groupdigits(data.paymentAmount), data.paymentsLeft),
             readOnly = true,
@@ -76,7 +76,7 @@ local function showVehicleFinanceMenu(data)
         id = 'vehicleFinance',
         title = locale('menus.financed_header'),
         menu = 'ownedVehicles',
-        options = vehFinance
+        options = options
     })
 
     lib.showContext('vehicleFinance')
@@ -85,7 +85,7 @@ end
 --- Gets the owned vehicles based on financing then opens a menu
 local function showFinancedVehiclesMenu()
     local vehicles = lib.callback.await('qbx_vehicleshop:server:GetFinancedVehicles')
-    local ownedVehicles = {}
+    local options = {}
 
     if not vehicles or #vehicles == 0 then
         return exports.qbx_core:Notify(locale('error.nofinanced'), 'error')
@@ -97,7 +97,7 @@ local function showFinancedVehiclesMenu()
 
         plate = plate and plate:upper()
 
-        ownedVehicles[#ownedVehicles + 1] = {
+        options[#options + 1] = {
             title = vehicle.name,
             description = locale('menus.veh_platetxt')..plate,
             icon = 'fa-solid fa-car-side',
@@ -116,14 +116,14 @@ local function showFinancedVehiclesMenu()
         }
     end
 
-    if #ownedVehicles == 0 then
+    if #options == 0 then
         return exports.qbx_core:Notify(locale('error.nofinanced'), 'error')
     end
 
     lib.registerContext({
         id = 'ownedVehicles',
         title = locale('menus.owned_vehicles_header'),
-        options = ownedVehicles
+        options = options
     })
 
     lib.showContext('ownedVehicles')
@@ -195,6 +195,7 @@ local function openVehCatsMenu(category, targetVehicle)
     local vehiclesMenu = GetVehiclesFromServer()
 
     local categoryMenu = {}
+
     for i = 1, vehiclesMenu.count do
         local vehicle = vehiclesMenu.vehicles[i]
         if vehicle.category == category and vehicle.shopType == insideShop then
@@ -215,8 +216,8 @@ local function openVehCatsMenu(category, targetVehicle)
 end
 
 --- Opens a menu with list of vehicle categories
----@param args {targetVehicle: integer}
-local function openVehicleCategoryMenu(args)
+---@param targetVehicle integer
+local function openVehicleCategoryMenu(targetVehicle)
     local categoryMenu = {}
     local sortedCategories = {}
     local categories = sharedConfig.shops[insideShop].categories
@@ -229,7 +230,7 @@ local function openVehicleCategoryMenu(args)
     end
 
     table.sort(sortedCategories, function(a, b)
-        return string.upper(a.label) < string.upper(b.label)
+        return a.label:upper() < b.label:upper()
     end)
 
     for i = 1, #sortedCategories do
@@ -237,7 +238,7 @@ local function openVehicleCategoryMenu(args)
             title = sortedCategories[i].label,
             arrow = true,
             onSelect = function()
-                openVehCatsMenu(sortedCategories[i].category, args.targetVehicle)
+                openVehCatsMenu(sortedCategories[i].category, targetVehicle)
             end
         }
     end
@@ -275,11 +276,11 @@ local function openCustomFinance(targetVehicle)
 
     local downPayment = tonumber(dialog[1])
     local paymentAmount = tonumber(dialog[2])
-    local playerid = tonumber(dialog[3])
+    local playerId = tonumber(dialog[3])
 
-    if not downPayment or not paymentAmount or not playerid then return end
+    if not downPayment or not paymentAmount or not playerId then return end
 
-    TriggerServerEvent('qbx_vehicleshop:server:sellfinanceVehicle', downPayment, paymentAmount, vehicle, playerid)
+    TriggerServerEvent('qbx_vehicleshop:server:sellfinanceVehicle', downPayment, paymentAmount, vehicle, playerId)
 end
 
 ---prompt client for playerId of another player
@@ -329,10 +330,9 @@ local function openVehicleSellMenu(targetVehicle)
         title = locale('menus.swap_header'),
         description = locale('menus.swap_txt'),
         icon = 'right-left',
-        onSelect = openVehicleCategoryMenu,
-        args = {
-            targetVehicle = targetVehicle
-        },
+        onSelect = function()
+            openVehicleCategoryMenu(targetVehicle)
+        end,
         arrow = true
     }
 
@@ -350,11 +350,10 @@ local function openVehicleSellMenu(targetVehicle)
             options[#options + 1] = {
                 title = locale('menus.test_header'),
                 description = locale('menus.freeuse_test_txt'),
-                serverEvent = 'qbx_vehicleshop:server:testDrive',
                 icon = 'car',
-                args = {
-                    vehicle = vehicle
-                }
+                onSelect = function()
+                    TriggerServerEvent('qbx_vehicleshop:server:testDrive', vehicle)
+                end,
             }
         end
 
@@ -363,10 +362,9 @@ local function openVehicleSellMenu(targetVehicle)
                 title = locale('menus.freeuse_buy_header'),
                 description = locale('menus.freeuse_buy_txt'),
                 icon = 'dollar-sign',
-                serverEvent = 'qbx_vehicleshop:server:buyShowroomVehicle',
-                args = {
-                    buyVehicle = vehicle
-                }
+                onSelect = function()
+                    TriggerServerEvent('qbx_vehicleshop:server:buyShowroomVehicle', vehicle)
+                end,
             }
         end
 
@@ -435,7 +433,7 @@ local function createVehicleTarget(shopName, entity, targetVehicle)
 
     exports.ox_target:addLocalEntity(entity, {
         {
-            name = 'vehicleshop:showVehicleOptions',
+            name = 'showVehicleOptions',
             icon = 'fas fa-car',
             label = locale('general.vehinteraction'),
             distance = shop.zone.targetDistance,
@@ -525,30 +523,32 @@ local function createShowroomVehiclePoint(data)
         vehiclePos = data.vehiclePos,
         model = data.model,
         veh = nil,
-        boxZone = nil
+        boxZone = nil,
+        onEnter = function(self)
+            self.veh = createShowroomVehicle(self.model, vec4(self.coords.x, self.coords.y, self.coords.z, self.heading))
+
+            if config.useTarget then
+                createVehicleTarget(self.shopName, self.veh, self.vehiclePos)
+            else
+                self.boxZone = createVehicleZone(self.shopName, self.coords, self.vehiclePos)
+            end
+        end,
+        onExit = function(self)
+            if config.useTarget then
+                exports.ox_target:removeLocalEntity(self.veh, 'showVehicleOptions')
+            else
+                self.boxZone:remove()
+            end
+
+            if DoesEntityExist(self.veh) then
+                DeleteEntity(self.veh)
+            end
+
+            self.veh = nil
+            self.boxZone = nil
+        end
     })
 
-    function vehPoint:onEnter()
-        self.veh = createShowroomVehicle(self.model, vec4(self.coords.x, self.coords.y, self.coords.z, self.heading))
-        if config.useTarget then
-            createVehicleTarget(self.shopName, self.veh, self.vehiclePos)
-        else
-            self.boxZone = createVehicleZone(self.shopName, self.coords, self.vehiclePos)
-        end
-    end
-
-    function vehPoint:onExit()
-        if config.useTarget then
-            exports.ox_target:removeLocalEntity(self.veh, 'vehicleshop:showVehicleOptions')
-        else
-            self.boxZone:remove()
-        end
-        if DoesEntityExist(self.veh) then
-            DeleteEntity(self.veh)
-        end
-        self.veh = nil
-        self.boxZone = nil
-    end
     return vehPoint
 end
 
@@ -606,10 +606,6 @@ RegisterNetEvent('qbx_vehicleshop:client:swapVehicle', function(data)
         vehPoint:onExit()
         vehPoint:onEnter()
     end
-end)
-
-RegisterNetEvent('qbx_vehicleshop:client:testDrive', function(data)
-    TriggerServerEvent('qbx_vehicleshop:server:testDrive', data)
 end)
 
 local function confirmTrade(confirmationText)
@@ -678,7 +674,7 @@ CreateThread(function()
                 debug = config.debugPoly,
                 options = {
                     {
-                        name = 'vehicleshop:showFinanceMenu',
+                        name = 'showFinanceMenu',
                         icon = 'fas fa-money-check',
                         label = locale('menus.finance_menu'),
                         onSelect = function()
@@ -831,4 +827,11 @@ end)
 lib.callback.register("qbx_vehicleshop:client:getVehiclefromPed", function()
     local ped = cache.ped
     return GetVehiclePedIsIn(ped, false)
+end)
+
+--- Handles test drive requests from cardealer employees
+---@param data {vehicle: string}
+RegisterNetEvent('qbx_vehicleshop:client:testDrive', function(data)
+    if not data or not data.vehicle then return end
+    TriggerServerEvent('qbx_vehicleshop:server:testDrive', data.vehicle)
 end)

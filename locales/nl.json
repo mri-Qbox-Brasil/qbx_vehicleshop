@@ -23,7 +23,8 @@
         "buyerdeclined": "The player declined the transaction",
         "selftransfer": "You can't transfer to yourself",
         "sale_timeout": "Wait a while before trading your vehicle",
-        "notallowed": "You are not allowed to purchase this vehicle model"
+        "notallowed": "You are not allowed to purchase this vehicle model",
+        "no_clear_spawn": "No spawn area found for vehicle."
     },
     "success": {
         "purchased": "Gefeliciteerd met je nieuwe voertuig!",
@@ -39,6 +40,7 @@
         "financed_header": "Gefinancierde voertuigen",
         "finance_txt": "Blader door uw eigen voertuigen",
         "returnTestDrive_header": "Stop testrit",
+        "categories_header": "Categories",
         "goback_header": "Ga terug",
         "veh_price": "Prijs: $",
         "veh_platetxt": "Kenteken: ",
@@ -53,6 +55,7 @@
         "submit_text": "Dien in",
         "test_header": "Testrit",
         "finance_header": "Financier voertuig",
+        "owned_vehicles_header": "Owned Vehicles",
         "swap_header": "Vervang voertuig",
         "swap_txt": "Vervang voertuig met geselecteerd voertuig",
         "financesubmit_downpayment": "Aanbetaling - Min ",
