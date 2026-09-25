@@ -78,3 +78,16 @@ LoadVehicles()
 RegisterNetEvent('qbx_vehicleshop:client:refreshVehicles', function()
     RefreshVehicles()
 end)
+
+-- Vehicles added/edited/removed at runtime (qbx_core mri/): updates the menu locally,
+-- without asking the server for the whole list again
+local rebuildPending = false
+RegisterNetEvent('qbx_core:client:onVehicleUpdate', function(model, vehicle)
+    VEHICLES[model] = vehicle
+    if rebuildPending then return end
+    rebuildPending = true
+    SetTimeout(500, function()
+        rebuildPending = false
+        LoadVehicles()
+    end)
+end)

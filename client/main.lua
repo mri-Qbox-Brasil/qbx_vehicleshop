@@ -9,6 +9,12 @@ local sharedConfig = require 'config.shared'
 local vehiclesMenu = GetVehiclesFromServer()
 local VEHICLES = lib.callback.await('qbx_vehicleshop:server:getVehicles', false) --exports.qbx_core:GetVehiclesByName()
 local VEHICLES_HASH = exports.qbx_core:GetVehiclesByHash()
+
+-- Keeps the cached list in sync with vehicles added/edited/removed at runtime (qbx_core mri/)
+RegisterNetEvent('qbx_core:client:onVehicleUpdate', function(model, vehicle)
+    VEHICLES[model] = vehicle
+    VEHICLES_HASH[joaat(model)] = vehicle
+end)
 local insideShop
 local showroomPoints = {}
 
@@ -339,7 +345,7 @@ local function openVehicleSellMenu(targetVehicle)
     if sharedConfig.shops[insideShop].type == 'free-use' then
         options[#options + 1] = {
             title = "Estoque",
-            description = 'Estoque atual: ' .. stock,
+            description = 'Estoque atual: ' .. (stock or 'ilimitado'),
             icon = 'box',
             disabled = true
         }
@@ -732,94 +738,6 @@ CreateThread(function()
             })
         end
     end
-end)
-
-lib.callback.register("qbx_vehicleshop:dialog:updateStock", function(vehicleInfo)
-    local categories = lib.callback.await("qbx_vehicleshop:server:getCategories", false)
-
-    local input = lib.inputDialog("Editar Veículo: " .. vehicleInfo.model, {
-        {
-            type = "number",
-            label = "Quantidade de Estoque",
-            description = "Digite a nova quantidade",
-            default = vehicleInfo.stock,
-            min = 0,
-            step = 1
-        },
-        {
-            type = "number",
-            label = "Preço do Veículo",
-            description = "Digite o novo preço",
-            default = vehicleInfo.price,
-            min = 0,
-            step = 1
-        },
-        {
-            type = "input",
-            label = "Nome do Veículo",
-            description = "Nome visível na loja",
-            default = vehicleInfo.name,
-            required = true
-        },
-        {
-            type = "input",
-            label = "Marca",
-            description = "Digite a marca",
-            default = vehicleInfo.brand,
-            required = true
-        },
-        {
-            type = "select",
-            label = "Escolha uma Categoria",
-            description = "Selecione uma categoria existente ou digite uma nova",
-            options = categories,
-            default = vehicleInfo.category,
-            required = true
-        },
-        {
-            type = "input",
-            label = "Modelo (Não Editável)",
-            description = "Identificação do veículo",
-            default = vehicleInfo.model,
-            disabled = true
-        },
-        {
-            type = "input",
-            label = "Hash (Não Editável)",
-            description = "Hash do veículo",
-            default = vehicleInfo.hash,
-            disabled = true
-        },
-        {
-            type = "checkbox",
-            label = "Redefinir dados do veículo",
-            description = "Excluir e recadastrar com os dados do sistema",
-            checked = false
-        }
-    })
-
-    return input and {
-        stock = input[1],
-        price = input[2],
-        name = input[3],
-        brand = input[4],
-        category = input[5],
-        reset = input[8]
-    } or false
-end)
-
-lib.callback.register("qbx_vehicleshop:dialog:selectVehicle", function(vehicleList)
-    local input = lib.inputDialog("Escolha um veículo", {
-        {
-            type = "select",
-            label = "Selecione o veículo",
-            options = vehicleList,
-            searchable = true,
-            clearable = true
-        }
-    })
-
-    return input and input[1] or false
 end)
 
 lib.callback.register("qbx_vehicleshop:client:getVehiclefromPed", function()
