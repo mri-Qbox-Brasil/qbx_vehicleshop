@@ -181,7 +181,7 @@ end
 
 ---@param vehicle string
 ---@param playerId string|number
-RegisterNetEvent('qbx_vehicleshop:server:sellShowroomVehicle', function(vehicle, playerId, vip)
+RegisterNetEvent('qbx_vehicleshop:server:sellShowroomVehicle', function(vehicle, playerId)
     local src = source
     local target = exports.qbx_core:GetPlayer(tonumber(playerId))
 
@@ -209,7 +209,7 @@ RegisterNetEvent('qbx_vehicleshop:server:sellShowroomVehicle', function(vehicle,
     local vehiclePrice = CheckPrice(vehicle)
     local cid = target.PlayerData.citizenid
 
-    if not SellShowroomVehicleTransact(src, target, vehiclePrice, vehiclePrice, vip) then return end
+    if not SellShowroomVehicleTransact(src, target, vehiclePrice, vehiclePrice) then return end
 
     local vehicleId = exports.qbx_vehicles:CreatePlayerVehicle({
         model = vehicle,
@@ -338,6 +338,7 @@ lib.addCommand('transfervehicle', {
 end)
 
 local VEHICLES_DATA = {}
+local vehiclesLoaded = false
 
 function LoadVehiclesData()
     VEHICLES_DATA = {}
@@ -356,7 +357,7 @@ function LoadVehiclesData()
             count = count + 1
         end
     end
-    print('qbx_vehicleshop: Loaded ' .. count .. ' vehicles')
+    return count
 end
 
 AddEventHandler('onResourceStart', function(resourceName)
@@ -366,6 +367,7 @@ AddEventHandler('onResourceStart', function(resourceName)
 end)
 
 lib.callback.register('qbx_vehicleshop:server:getVehicles', function(source)
+    while not vehiclesLoaded do Wait(100) end
     return VEHICLES_DATA
 end)
 
@@ -374,14 +376,12 @@ function CheckStock(vehicle)
     return result and result[1] and result[1].stock or 0
 end
 
----Retira uma unidade do estoque numa única query, para duas compras simultâneas não levarem a mesma unidade
 ---@param vehicle string
 ---@return boolean
 function TakeStock(vehicle)
     return MySQL.update.await('UPDATE vehicles_data SET stock = stock - 1 WHERE model = ? AND stock > 0', { vehicle }) > 0
 end
 
----Devolve uma unidade retirada por TakeStock quando a compra não se concretiza
 ---@param vehicle string
 function ReturnStock(vehicle)
     MySQL.update.await('UPDATE vehicles_data SET stock = stock + 1 WHERE model = ?', { vehicle })
@@ -426,24 +426,24 @@ function PrepareDatabase()
         )
     ]])
 
-    print("Tabela 'vehicles_data' verificada/criada.")
+    local existing = {}
+    for _, row in pairs(MySQL.query.await('SELECT model FROM vehicles_data')) do
+        existing[row.model] = true
+    end
 
-    local vehShare = exports.qbx_core:GetVehiclesByName()
-    for k, v in pairs(vehShare) do
-        local dbcar = MySQL.query.await("SELECT 1 FROM vehicles_data WHERE model = ? LIMIT 1", { k })
-        if not dbcar[1] then
-            print("Inserted:", k)
-            MySQL.insert("INSERT INTO vehicles_data (model, stock, price, name, brand, category, hash) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    local inserted = 0
+    for k, v in pairs(exports.qbx_core:GetVehiclesByName()) do
+        if not existing[k] then
+            inserted = inserted + 1
+            MySQL.insert.await("INSERT INTO vehicles_data (model, stock, price, name, brand, category, hash) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 { k, 0, v.price, v.name, v.brand, v.category, v.hash })
-            VEHICLES_DATA[k] = { stock = 0, price = v.price, model = k, name = v.name, brand = v.brand, category = v.category }
-        else
-            print("Exists:", k)
         end
     end
 
+    local count = LoadVehiclesData()
+    vehiclesLoaded = true
     TriggerClientEvent('qbx_vehicleshop:client:refreshVehicles', -1)
-    print("qbx_vehicleshop: Tabela de veículos carregada.")
-    LoadVehiclesData()
+    lib.print.info(('%s veículos carregados (%s novos cadastrados com estoque 0)'):format(count, inserted))
 end
 
 

@@ -118,7 +118,7 @@ end)
 ---@return integer balance owed on the vehicle
 ---@return integer numPayments to pay off the balance
 local function calculateFinance(vehiclePrice, downPayment, paymentamount)
-    local balance = (vehiclePrice * 2 ) - downPayment
+    local balance = vehiclePrice - downPayment
     local vehPaymentAmount = balance / paymentamount
 
     return lib.math.round(balance), lib.math.round(vehPaymentAmount)

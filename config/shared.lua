@@ -182,7 +182,7 @@ return {
             toro = 'boats',
             toro2 = 'boats',
 
---- Helicopters
+            --- Helicopters
             buzzard2 = 'air',
             frogger = 'air',
             frogger2 = 'air',
@@ -325,9 +325,9 @@ return {
                 { coords = vec4(-1265.31, -354.44, 35.91, 205.08), vehicle = 'italirsx' },
                 { coords = vec4(-1270.06, -358.55, 35.91, 247.08), vehicle = 'italigtb' },
                 { coords = vec4(-1269.21, -365.03, 35.91, 297.12), vehicle = 'nero' },
-                { coords = vec4(-1252.07, -364.2, 35.91, 56.44), vehicle = 'bati' },
-                { coords = vec4(-1255.49, -365.91, 35.91, 55.63), vehicle = 'carbonrs' },
-                { coords = vec4(-1249.21, -362.97, 35.91, 53.24), vehicle = 'hexer' },
+                { coords = vec4(-1252.07, -364.2, 35.91, 56.44), vehicle = 'nero2' },
+                { coords = vec4(-1255.49, -365.91, 35.91, 55.63), vehicle = 'osiris' },
+                { coords = vec4(-1249.21, -362.97, 35.91, 53.24), vehicle = 'penetrator' },
             }
         },
 

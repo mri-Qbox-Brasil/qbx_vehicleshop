@@ -24,7 +24,7 @@ local function LoadVehicles()
     blocklist = {}
     count = 0
 
-    for i = 1, #sharedConfig.blocklist or {} do
+    for i = 1, #sharedConfig.blocklist do
         local blockveh = sharedConfig.blocklist[i]
         blocklist[blockveh] = true
     end

@@ -314,11 +314,10 @@ lib.onCache('vehicle', function(value)
 end)
 
 ---@param vehModel string
-local function sellVehicle(vehModel, data)
+local function sellVehicle(vehModel)
     local playerId = getPlayerIdInput(vehModel)
-    local vip = data and data.vip or nil
 
-    TriggerServerEvent('qbx_vehicleshop:server:sellShowroomVehicle', vehModel, playerId, vip)
+    TriggerServerEvent('qbx_vehicleshop:server:sellShowroomVehicle', vehModel, playerId)
 end
 
 --- Opens the vehicle shop menu
@@ -341,7 +340,6 @@ local function openVehicleSellMenu(targetVehicle)
         options[#options + 1] = {
             title = "Estoque",
             description = 'Estoque atual: ' .. stock,
-            serverEvent = 'qbx_vehicleshop:server:testDrive',
             icon = 'box',
             disabled = true
         }
@@ -386,7 +384,7 @@ local function openVehicleSellMenu(targetVehicle)
                 description = locale('menus.managed_sell_txt'),
                 icon = 'fa-solid fa-hand-holding-dollar',
                 onSelect = function()
-                    sellVehicle(vehicle, {vip = true})
+                    sellVehicle(vehicle)
                 end,
         }
 
@@ -834,4 +832,8 @@ end)
 RegisterNetEvent('qbx_vehicleshop:client:testDrive', function(data)
     if not data or not data.vehicle then return end
     TriggerServerEvent('qbx_vehicleshop:server:testDrive', data.vehicle)
+end)
+
+RegisterNetEvent('qbx_vehicleshop:client:refreshVehicles', function()
+    VEHICLES = lib.callback.await('qbx_vehicleshop:server:getVehicles', false)
 end)
