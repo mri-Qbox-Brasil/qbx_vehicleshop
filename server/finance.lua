@@ -276,11 +276,6 @@ RegisterNetEvent('qbx_vehicleshop:server:financeVehicle', function(downPayment, 
         return exports.qbx_core:Notify(src, locale('error.notallowed'), 'error')
     end
 
-    local stock = CheckStock(vehicle)
-    if stock <= 0 then
-        return exports.qbx_core:Notify(src, locale('error.stockempty'), 'error')
-    end
-
     local coords = GetClearSpawnArea(shop.vehicleSpawns)
     if not coords then
         return exports.qbx_core:Notify(src, locale('error.no_clear_spawn'), 'error')
@@ -305,11 +300,14 @@ RegisterNetEvent('qbx_vehicleshop:server:financeVehicle', function(downPayment, 
         return exports.qbx_core:Notify(src, locale('error.exceededmax'), 'error')
     end
 
-    if not RemoveMoney(src, downPayment, 'vehicle-financed-in-showroom') then
-        return exports.qbx_core:Notify(src, locale('error.notenoughmoney'), 'error')
+    if not TakeStock(vehicle) then
+        return exports.qbx_core:Notify(src, locale('error.stockempty'), 'error')
     end
 
-    MySQL.execute('UPDATE vehicles_data SET stock = ? WHERE model = ?', { stock - 1, vehicle })
+    if not RemoveMoney(src, downPayment, 'vehicle-financed-in-showroom') then
+        ReturnStock(vehicle)
+        return exports.qbx_core:Notify(src, locale('error.notenoughmoney'), 'error')
+    end
 
     local balance, vehPaymentAmount = calculateFinance(vehiclePrice, downPayment, paymentAmount)
     local citizenId = player.PlayerData.citizenid

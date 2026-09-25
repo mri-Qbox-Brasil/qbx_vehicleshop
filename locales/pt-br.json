@@ -1,6 +1,7 @@
 {
     "error": {
         "stockempty": "Veículo sem estoque!",
+        "notenoughcoin": "Coins insuficientes",
         "notowned": "Veículo não é seu",
         "testdrive_alreadyin": "Já está em um test drive",
         "testdrive_return": "Este não é o seu veículo de test drive",
@@ -56,6 +57,7 @@
         "submit_text": "Enviar",
         "test_header": "Test Drive",
         "finance_header": "Financiar Veículo",
+        "finance_menu": "Veículos Financiados",
         "owned_vehicles_header": "Veículos Possuídos",
         "swap_header": "Trocar Veículo",
         "swap_txt": "Alterar o veículo selecionado",

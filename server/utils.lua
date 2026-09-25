@@ -84,12 +84,7 @@ end
 function RemoveCoins(src, amount, reason)
     local player = exports.qbx_core:GetPlayer(src)
 
-    local coin = player.PlayerData.money.coin
     local currencyType = 'coin'
-
-    print("PlayerData", json.encode(player.PlayerData))
-
-    print("RemoveCoins coin:", coin, "amount:", amount, "currencyType:", currencyType, "src:", src)
 
     if not currencyType then
         exports.qbx_core:Notify(src, locale('error.notenoughcoin'), 'error')

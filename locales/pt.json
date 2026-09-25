@@ -1,6 +1,7 @@
 {
     "error": {
         "stockempty": "Veículo sem estoque!",
+        "notenoughcoin": "Coins insuficientes",
         "notowned": "Este veículo não pertence ao jogador",
         "testdrive_alreadyin": "Já estás num test drive",
         "testdrive_return": "Este não é o teu veículo de test drive",
@@ -56,6 +57,7 @@
         "submit_text": "Submeter",
         "test_header": "Test Drive",
         "finance_header": "Financiar Veículo",
+        "finance_menu": "Veículos Financiados",
         "owned_vehicles_header": "Veículos Possuídos",
         "swap_header": "Trocar Veículo",
         "swap_txt": "Alterar veículo selecionado atualmente",

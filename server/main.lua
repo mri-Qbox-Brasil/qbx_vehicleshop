@@ -122,11 +122,6 @@ RegisterNetEvent('qbx_vehicleshop:server:buyShowroomVehicle', function(vehicle)
     local shop = sharedConfig.shops[shopId]
     if not shop then return end
 
-    local stock = CheckStock(vehicle)
-    if stock <= 0 then
-        return exports.qbx_core:Notify(src, locale('error.stockempty'), 'error')
-    end
-
     if not CheckVehicleList(vehicle, shopId) then
         return exports.qbx_core:Notify(src, locale('error.notallowed'), 'error')
     end
@@ -138,11 +133,15 @@ RegisterNetEvent('qbx_vehicleshop:server:buyShowroomVehicle', function(vehicle)
 
     local player = exports.qbx_core:GetPlayer(src)
     local vehiclePrice = CheckPrice(vehicle)
-    if not RemoveMoney(src, vehiclePrice, 'vehicle-bought-in-showroom') then
-        return
+
+    if not TakeStock(vehicle) then
+        return exports.qbx_core:Notify(src, locale('error.stockempty'), 'error')
     end
 
-    MySQL.execute('UPDATE vehicles_data SET stock = ? WHERE model = ?', { stock - 1, vehicle })
+    if not RemoveMoney(src, vehiclePrice, 'vehicle-bought-in-showroom') then
+        ReturnStock(vehicle)
+        return
+    end
 
     local vehicleId = exports.qbx_vehicles:CreatePlayerVehicle({
         model = vehicle,
@@ -373,6 +372,19 @@ end)
 function CheckStock(vehicle)
     local result = MySQL.query.await('SELECT stock FROM vehicles_data WHERE model = ?', {vehicle})
     return result and result[1] and result[1].stock or 0
+end
+
+---Retira uma unidade do estoque numa única query, para duas compras simultâneas não levarem a mesma unidade
+---@param vehicle string
+---@return boolean
+function TakeStock(vehicle)
+    return MySQL.update.await('UPDATE vehicles_data SET stock = stock - 1 WHERE model = ? AND stock > 0', { vehicle }) > 0
+end
+
+---Devolve uma unidade retirada por TakeStock quando a compra não se concretiza
+---@param vehicle string
+function ReturnStock(vehicle)
+    MySQL.update.await('UPDATE vehicles_data SET stock = stock + 1 WHERE model = ?', { vehicle })
 end
 
 function CheckPrice(vehicle)

@@ -1,6 +1,7 @@
 {
     "error": {
         "stockempty": "Vehicle out of stock",
+        "notenoughcoin": "Not enough coins",
         "notowned": "Vehicle not owned",
         "testdrive_alreadyin": "Already in test drive",
         "testdrive_return": "This is not your test drive vehicle",
@@ -56,6 +57,7 @@
         "submit_text": "Submit",
         "test_header": "Test Drive",
         "finance_header": "Finance Vehicle",
+        "finance_menu": "Financed Vehicles",
         "owned_vehicles_header": "Owned Vehicles",
         "swap_header": "Swap Vehicle",
         "swap_txt": "Change currently selected vehicle",
